@@ -180,6 +180,10 @@ fn generate_connections_queries(csv_connections: &Vec<Connection>) -> Vec<Query>
             .param("bname", connection.station2.name.clone())
             .param("time", connection.time.clone()));
 
+        queries.push(query(&_a)
+            .param("aname", connection.station2.name.clone())
+            .param("bname", connection.station1.name.clone())
+            .param("time", connection.time.clone()));
         // queries.push(query("CREATE (s:Station {id: $id, x: $x, y: $y, \
         // name: $name, zone: $zone, total_lines: $total_lines })")
         //     .param("id", station.id.clone().to_string())
