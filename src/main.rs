@@ -9,39 +9,39 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
 struct CsvLine {
-    line: i32,
+    line: i64,
     name: String,
     colour: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 struct CsvStation {
-    id: i32,
+    id: i64,
     latitude: f32,
     longitude: f32,
     name: String,
     zone: f32,
-    total_lines:  i32,
+    total_lines:  i64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 struct Station {
-    id: i32,
+    id: i64,
     x: f32,
     y: f32,
     name: String,
     zone: f32,
-    total_lines:  i32,
+    total_lines:  i64,
     latitude: f32,
     longitude: f32,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 struct CsvConnection {
-    station1: i32,
-    station2: i32,
-    line: i32,
-    time: i32,
+    station1: i64,
+    station2: i64,
+    line: i64,
+    time: i64,
 }
 
 
@@ -50,11 +50,11 @@ struct Connection {
     station1: CsvStation,
     station2: CsvStation,
     line: CsvLine,
-    time: i32,
+    time: i64,
 }
 
-fn parse_stations() -> Result<HashMap<i32, CsvStation>, Box<dyn Error>> {
-    let mut id_stations_map: HashMap<i32, CsvStation> = HashMap::new();
+fn parse_stations() -> Result<HashMap<i64, CsvStation>, Box<dyn Error>> {
+    let mut id_stations_map: HashMap<i64, CsvStation> = HashMap::new();
     let mut rdr = csv::Reader::from_path("./datasets/london.stations.csv").unwrap();
     for result in rdr.deserialize() {
         // Notice that we need to provide a type hint for automatic
@@ -66,8 +66,8 @@ fn parse_stations() -> Result<HashMap<i32, CsvStation>, Box<dyn Error>> {
     Ok(id_stations_map)
 }
 
-fn parse_lines() -> Result<HashMap<i32, CsvLine>, Box<dyn Error>> {
-    let mut id_line_map: HashMap<i32, CsvLine> = HashMap::new();
+fn parse_lines() -> Result<HashMap<i64, CsvLine>, Box<dyn Error>> {
+    let mut id_line_map: HashMap<i64, CsvLine> = HashMap::new();
     let mut rdr = csv::Reader::from_path("./datasets/london.lines.csv").unwrap();
     for result in rdr.deserialize() {
         // Notice that we need to provide a type hint for automatic
@@ -83,7 +83,7 @@ fn parse_lines() -> Result<HashMap<i32, CsvLine>, Box<dyn Error>> {
     Ok(id_line_map)
 }
 
-fn parse_connections(id_stations_map: &HashMap<i32, CsvStation>, id_line_map: &HashMap<i32, CsvLine>)
+fn parse_connections(id_stations_map: &HashMap<i64, CsvStation>, id_line_map: &HashMap<i64, CsvLine>)
                      -> Result<Vec<Connection>, Box<dyn Error>> {
     let mut connections: Vec<Connection> = Vec::new();
     let mut rdr = csv::Reader::from_path("./datasets/london.connections.csv").unwrap();
@@ -103,7 +103,7 @@ fn parse_connections(id_stations_map: &HashMap<i32, CsvStation>, id_line_map: &H
     Ok(connections)
 }
 
-fn normalize_station_coordinates(id_csv_stations_map: &HashMap<i32, CsvStation>) -> HashMap<i32, Station> {
+fn normalize_station_coordinates(id_csv_stations_map: &HashMap<i64, CsvStation>) -> HashMap<i64, Station> {
 
     let latitudes: Vec<f32> = id_csv_stations_map
         .values()
@@ -127,7 +127,7 @@ fn normalize_station_coordinates(id_csv_stations_map: &HashMap<i32, CsvStation>)
     let width = max_x - min_x;
     let height = max_y - min_y;
 
-    let mut new_ids_stations_map: HashMap<i32, Station> = HashMap::new();
+    let mut new_ids_stations_map: HashMap<i64, Station> = HashMap::new();
     for (id, csv_station) in id_csv_stations_map.into_iter() {
         let new_station = Station {
             id: csv_station.id,
@@ -145,7 +145,7 @@ fn normalize_station_coordinates(id_csv_stations_map: &HashMap<i32, CsvStation>)
     new_ids_stations_map
 }
 
-fn generate_node_creation_queries(id_csv_stations_map: &HashMap<i32, CsvStation>) -> Vec<Query> {
+fn generate_node_creation_queries(id_csv_stations_map: &HashMap<i64, CsvStation>) -> Vec<Query> {
     let mut queries: Vec<Query> = Vec::new();
     let id_stations_map = normalize_station_coordinates(&id_csv_stations_map);
     for (id, station) in id_stations_map.into_iter() {
@@ -178,7 +178,7 @@ fn generate_connections_queries(csv_connections: &Vec<Connection>) -> Vec<Query>
         queries.push(query(&_a)
             .param("aname", connection.station1.name.clone())
             .param("bname", connection.station2.name.clone())
-            .param("time", connection.time.clone().to_string()));
+            .param("time", connection.time.clone()));
 
         // queries.push(query("CREATE (s:Station {id: $id, x: $x, y: $y, \
         // name: $name, zone: $zone, total_lines: $total_lines })")
