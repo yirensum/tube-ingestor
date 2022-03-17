@@ -72,8 +72,12 @@ fn parse_lines() -> Result<HashMap<i32, CsvLine>, Box<dyn Error>> {
     for result in rdr.deserialize() {
         // Notice that we need to provide a type hint for automatic
         // deserialization.
-        let line: CsvLine = result?;
-        // println!("{:?}", line.clone());
+        let mut line: CsvLine = result?;
+        let mut cleaned_line_name = line.name.clone();
+        cleaned_line_name = cleaned_line_name.replace("Line", "");
+        cleaned_line_name = cleaned_line_name.replace("&", "and");
+        cleaned_line_name = cleaned_line_name.replace(" ", "_");
+        line.name = cleaned_line_name;
         id_line_map.insert(line.line, line);
     }
     Ok(id_line_map)
@@ -145,6 +149,7 @@ fn generate_node_creation_queries(id_csv_stations_map: &HashMap<i32, CsvStation>
     let mut queries: Vec<Query> = Vec::new();
     let id_stations_map = normalize_station_coordinates(&id_csv_stations_map);
     for (id, station) in id_stations_map.into_iter() {
+
         queries.push(query("CREATE (s:Station {id: $id, x: $x, y: $y, \
         name: $name, zone: $zone, total_lines: $total_lines })")
             .param("id", station.id.clone().to_string())
@@ -154,6 +159,36 @@ fn generate_node_creation_queries(id_csv_stations_map: &HashMap<i32, CsvStation>
             .param("zone", station.zone.clone().to_string())
             .param("total_lines", station.total_lines.clone().to_string())
         );
+    }
+    queries
+}
+
+fn generate_connections_queries(csv_connections: &Vec<Connection>) -> Vec<Query> {
+    let mut queries: Vec<Query> = Vec::new();
+    for connection in csv_connections.into_iter() {
+
+        let mut _a = "MATCH (a:Station), (b:Station) WHERE a.name = $aname AND b.name = $bname
+        CREATE (a)-[r:".to_string();
+        let _b = connection.line.name.clone().to_uppercase();
+        let _c = "{time: $time}]->(b)".to_string();
+
+        _a.push_str(&_b);
+        _a.push_str(&_c);
+
+        queries.push(query(&_a)
+            .param("aname", connection.station1.name.clone())
+            .param("bname", connection.station2.name.clone())
+            .param("time", connection.time.clone().to_string()));
+
+        // queries.push(query("CREATE (s:Station {id: $id, x: $x, y: $y, \
+        // name: $name, zone: $zone, total_lines: $total_lines })")
+        //     .param("id", station.id.clone().to_string())
+        //     .param("x", station.x.clone().to_string())
+        //     .param("y", station.y.clone().to_string())
+        //     .param("name", station.name.clone())
+        //     .param("zone", station.zone.clone().to_string())
+        //     .param("total_lines", station.total_lines.clone().to_string())
+        // );
     }
     queries
 }
@@ -174,6 +209,7 @@ async fn main() {
     let mut txn = graph.start_txn().await.unwrap();
 
     let node_creation_queries = generate_node_creation_queries(&id_csv_stations_map);
+    let connection_creation_queries = generate_connections_queries(&connections);
     txn.run_queries(vec![
         query("MATCH (n) DETACH DELETE n"),
     ])
@@ -181,6 +217,9 @@ async fn main() {
         .unwrap();
 
     txn.run_queries(node_creation_queries)
+        .await
+        .unwrap();
+    txn.run_queries(connection_creation_queries)
         .await
         .unwrap();
     txn.commit().await.unwrap(); //or txn.rollback().await.unwrap();
