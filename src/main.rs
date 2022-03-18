@@ -10,7 +10,7 @@ use serde::Deserialize;
 mod tube_ingest;
 mod bus_ingest;
 use tube_ingest::run_tube_ingest;
-use bus_ingest::run_bus_ingest;
+use bus_ingest::{Bus_Ingest};
 
 #[tokio::main]
 async fn main() {
@@ -28,10 +28,32 @@ async fn main() {
         .await
         .unwrap();
 
-
-    run_tube_ingest(&graph, &txn).await;
-    run_bus_ingest(&graph, &txn).await;
-
+    // run_tube_ingest(&graph, &txn).await;
     txn.commit().await.unwrap(); //or txn.rollback().await.unwrap();
+
+    let mut bus_ingest = Bus_Ingest::new();
+    bus_ingest.run_bus_ingest().await;
+
+    let mut txn = graph.start_txn().await.unwrap();
+
+    let query_chunks: Vec<&[Query]> = bus_ingest.queries.chunks(10000).collect();
+
+    for chunk in query_chunks {
+        println!("{:?}", chunk.len());
+        txn.run_queries(chunk.to_vec()).await.unwrap();
+        txn.commit().await.unwrap();
+        txn = graph.start_txn().await.unwrap();
+    }
+
+    // for (index, query) in bus_ingest.queries.into_iter().enumerate() {
+    //     txn.run(query);
+    //     if index % 10000 == 0 {
+    //         println!("{:?}", index);
+    //         txn.commit().await.unwrap(); //or txn.rollback().await.unwrap();
+    //         txn = graph.start_txn().await.unwrap();
+    //     }
+    // }
+
+    // txn.commit().await.unwrap(); //or txn.rollback().await.unwrap();
 
 }

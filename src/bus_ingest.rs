@@ -150,19 +150,35 @@ fn generate_route_queries(routes: &Vec<Route>) -> Vec<Query> {
     queries
 }
 
-pub async fn run_bus_ingest(graph: &Arc<Graph>, txn: &Txn) {
-
-    let id_csv_stops_map = parse_stops().unwrap();
-    let id_stops_map = normalize_stop_coordinates(&id_csv_stops_map);
-
-    let routes = parse_routes(&id_stops_map).unwrap();
-
-    let node_creation_queries = generate_node_creation_queries(&id_stops_map);
-    let route_creation_queries = generate_route_queries(&routes);
-    txn.run_queries(node_creation_queries)
-        .await
-        .unwrap();
-    txn.run_queries(route_creation_queries)
-        .await
-        .unwrap();
+pub struct Bus_Ingest {
+    pub queries: Vec<Query>,
 }
+
+impl Bus_Ingest {
+    pub fn new() -> Self {
+        Bus_Ingest {
+            queries: Vec::new()
+        }
+    }
+
+    pub async fn run_bus_ingest(&mut self) {
+
+        let id_csv_stops_map = parse_stops().unwrap();
+        let id_stops_map = normalize_stop_coordinates(&id_csv_stops_map);
+
+        let routes = parse_routes(&id_stops_map).unwrap();
+
+        let node_creation_queries = generate_node_creation_queries(&id_stops_map);
+        let route_creation_queries = generate_route_queries(&routes);
+
+        self.queries = node_creation_queries;
+        self.queries.extend(route_creation_queries);
+
+    }
+}
+
+
+
+
+
+
