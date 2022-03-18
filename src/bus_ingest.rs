@@ -25,7 +25,7 @@ struct Stop {
 
 #[derive(Debug, Deserialize, Clone)]
 struct CsvRoute {
-    Route: i64,
+    Route: String,
     Run: i64,
     Sequence: i64,
     Stop_Name: String,
@@ -33,6 +33,7 @@ struct CsvRoute {
 
 #[derive(Debug, Deserialize)]
 struct Route {
+    route_id: String,
     stop1: Stop,
     stop2: Stop,
 }
@@ -50,25 +51,37 @@ fn parse_stops() -> Result<HashMap<String, CsvStop>, Box<dyn Error>> {
     Ok(id_stop_map)
 }
 
-// fn parse_connections(id_stations_map: &HashMap<i64, CsvStation>, id_line_map: &HashMap<i64, CsvLine>)
-//                      -> Result<Vec<Connection>, Box<dyn Error>> {
-//     let mut connections: Vec<Connection> = Vec::new();
-//     let mut rdr = csv::Reader::from_path("./datasets/london.connections.csv").unwrap();
-//     for result in rdr.deserialize() {
-//         // Notice that we need to provide a type hint for automatic
-//         // deserialization.
-//         let csv_connection: CsvConnection = result?;
-//         let connection = Connection {
-//             station1: id_stations_map.get(&csv_connection.station1).cloned().unwrap(),
-//             station2: id_stations_map.get(&csv_connection.station2).cloned().unwrap(),
-//             line: id_line_map.get(&csv_connection.line).cloned().unwrap(),
-//             time: csv_connection.time,
-//         };
-//         connections.push(connection);
-//     }
-//
-//     Ok(connections)
-// }
+fn parse_routes(id_stops_map: &HashMap<String, Stop>)
+                -> Result<Vec<Route>, Box<dyn Error>> {
+    let mut rdr = csv::Reader::from_path("./datasets/busRoutes.csv").unwrap();
+
+    // find a way to do this better
+    let mut csv_routes: Vec<CsvRoute> = Vec::new();
+    for result in rdr.deserialize() {
+        // Notice that we need to provide a type hint for automatic
+        // deserialization.
+        let csv_route: CsvRoute = result?;
+        csv_routes.push(csv_route);
+
+    };
+
+    let mut routes: Vec<Route> = Vec::new();
+
+    for (a, b) in csv_routes.iter().zip(csv_routes.iter().skip(1)) {
+        if (a.Route == b.Route && a.Run == b.Run) {
+            // println!("{:?}", a);
+            if (id_stops_map.contains_key(&a.Stop_Name) && id_stops_map.contains_key(&b.Stop_Name)) {
+                let route = Route {
+                    stop1: id_stops_map.get(&a.Stop_Name).cloned().unwrap(),
+                    stop2: id_stops_map.get(&b.Stop_Name).cloned().unwrap(),
+                    route_id: b.Route.clone()
+                };
+                routes.push(route)
+            }
+        }
+    }
+    Ok(routes)
+}
 
 fn normalize_stop_coordinates(id_csv_stops_map: &HashMap<String, CsvStop>) -> HashMap<String, Stop> {
 
@@ -123,52 +136,33 @@ fn generate_node_creation_queries(id_stops_map: &HashMap<String, Stop>) -> Vec<Q
     }
     queries
 }
-//
-// fn generate_connections_queries(csv_connections: &Vec<Connection>) -> Vec<Query> {
-//     let mut queries: Vec<Query> = Vec::new();
-//     for connection in csv_connections.into_iter() {
-//
-//         let mut _a = "MATCH (a:Station), (b:Station) WHERE a.name = $aname AND b.name = $bname
-//         CREATE (a)-[r:".to_string();
-//         let _b = connection.line.name.clone().to_uppercase();
-//         let _c = "{time: $time}]->(b)".to_string();
-//
-//         _a.push_str(&_b);
-//         _a.push_str(&_c);
-//
-//         queries.push(query(&_a)
-//             .param("aname", connection.station1.name.clone())
-//             .param("bname", connection.station2.name.clone())
-//             .param("time", connection.time.clone()));
-//
-//         queries.push(query(&_a)
-//             .param("aname", connection.station2.name.clone())
-//             .param("bname", connection.station1.name.clone())
-//             .param("time", connection.time.clone()));
-//     }
-//     queries
-// }
+
+fn generate_route_queries(routes: &Vec<Route>) -> Vec<Query> {
+    let mut queries: Vec<Query> = Vec::new();
+    for route in routes.into_iter() {
+
+        queries.push(query("MATCH (a:Stop), (b:Stop) WHERE a.name = $aname AND b.name = $bname
+        CREATE (a)-[r: _ROUTE_ {route_id: $route_id}]->(b)")
+            .param("aname", route.stop1.name.clone())
+            .param("bname", route.stop2.name.clone())
+            .param("route_id", route.route_id.clone()));
+    }
+    queries
+}
 
 pub async fn run_bus_ingest(graph: &Arc<Graph>, txn: &Txn) {
 
     let id_csv_stops_map = parse_stops().unwrap();
     let id_stops_map = normalize_stop_coordinates(&id_csv_stops_map);
 
-    // let connections = parse_connections(&id_csv_stations_map, &id_line_map).unwrap();
-    //
+    let routes = parse_routes(&id_stops_map).unwrap();
+
     let node_creation_queries = generate_node_creation_queries(&id_stops_map);
-    // let connection_creation_queries = generate_connections_queries(&connections);
-    // txn.run_queries(vec![
-    //     query("MATCH (n) DETACH DELETE n"),
-    // ])
-    //     .await
-    //     .unwrap();
-    //
+    let route_creation_queries = generate_route_queries(&routes);
     txn.run_queries(node_creation_queries)
         .await
         .unwrap();
-    // txn.run_queries(connection_creation_queries)
-    //     .await
-    //     .unwrap();
-    // txn.commit().await.unwrap(); //or txn.rollback().await.unwrap();
+    txn.run_queries(route_creation_queries)
+        .await
+        .unwrap();
 }

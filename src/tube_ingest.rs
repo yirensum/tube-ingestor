@@ -8,7 +8,7 @@ use std::error::Error;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
-struct CsvLine {
+struct Line {
     line: i64,
     name: String,
     colour: String,
@@ -47,9 +47,9 @@ struct CsvConnection {
 
 #[derive(Debug, Deserialize)]
 struct Connection {
-    station1: CsvStation,
-    station2: CsvStation,
-    line: CsvLine,
+    station1: Station,
+    station2: Station,
+    line: Line,
     time: i64,
 }
 
@@ -66,13 +66,13 @@ fn parse_stations() -> Result<HashMap<i64, CsvStation>, Box<dyn Error>> {
     Ok(id_stations_map)
 }
 
-fn parse_lines() -> Result<HashMap<i64, CsvLine>, Box<dyn Error>> {
-    let mut id_line_map: HashMap<i64, CsvLine> = HashMap::new();
+fn parse_lines() -> Result<HashMap<i64, Line>, Box<dyn Error>> {
+    let mut id_line_map: HashMap<i64, Line> = HashMap::new();
     let mut rdr = csv::Reader::from_path("./datasets/london.lines.csv").unwrap();
     for result in rdr.deserialize() {
         // Notice that we need to provide a type hint for automatic
         // deserialization.
-        let mut line: CsvLine = result?;
+        let mut line: Line = result?;
         let mut cleaned_line_name = line.name.clone();
         cleaned_line_name = cleaned_line_name.replace("Line", "");
         cleaned_line_name = cleaned_line_name.replace("&", "and");
@@ -83,7 +83,7 @@ fn parse_lines() -> Result<HashMap<i64, CsvLine>, Box<dyn Error>> {
     Ok(id_line_map)
 }
 
-fn parse_connections(id_stations_map: &HashMap<i64, CsvStation>, id_line_map: &HashMap<i64, CsvLine>)
+fn parse_connections(id_stations_map: &HashMap<i64, Station>, id_line_map: &HashMap<i64, Line>)
                      -> Result<Vec<Connection>, Box<dyn Error>> {
     let mut connections: Vec<Connection> = Vec::new();
     let mut rdr = csv::Reader::from_path("./datasets/london.connections.csv").unwrap();
@@ -192,7 +192,7 @@ pub async fn run_tube_ingest(graph: &Arc<Graph>, txn: &Txn) {
     let id_csv_stations_map = parse_stations().unwrap();
     let id_stations_map = normalize_station_coordinates(&id_csv_stations_map);
     let id_line_map = parse_lines().unwrap();
-    let connections = parse_connections(&id_csv_stations_map, &id_line_map).unwrap();
+    let connections = parse_connections(&id_stations_map, &id_line_map).unwrap();
 
     let node_creation_queries = generate_node_creation_queries(&id_stations_map);
     let connection_creation_queries = generate_connections_queries(&connections);
