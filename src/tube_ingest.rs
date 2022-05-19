@@ -76,6 +76,7 @@ fn parse_lines() -> Result<HashMap<i64, Line>, Box<dyn Error>> {
         let mut cleaned_line_name = line.name.clone();
         cleaned_line_name = cleaned_line_name.replace("Line", "");
         cleaned_line_name = cleaned_line_name.replace("&", "and");
+        cleaned_line_name = cleaned_line_name.trim_end_matches(" ").parse().unwrap();
         cleaned_line_name = cleaned_line_name.replace(" ", "_");
         line.name = cleaned_line_name;
         id_line_map.insert(line.line, line);
