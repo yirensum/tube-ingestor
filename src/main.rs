@@ -41,19 +41,17 @@ async fn main() {
     txn.commit().await.unwrap(); //or txn.rollback().await.unwrap();
 
     // // uncomment this to run bus ingestion
-    let mut bus_ingest = Bus_Ingest::new();
-    bus_ingest.run_bus_ingest().await;
-
-    let mut txn = graph.start_txn().await.unwrap();
-
-    let query_chunks: Vec<&[Query]> = bus_ingest.queries.chunks(10000).collect();
-
-    for chunk in query_chunks {
-        println!("{:?}", chunk.len());
-        txn.run_queries(chunk.to_vec()).await.unwrap();
-        txn.commit().await.unwrap();
-        txn = graph.start_txn().await.unwrap();
-    }
-
-
+    // let mut bus_ingest = Bus_Ingest::new();
+    // bus_ingest.run_bus_ingest().await;
+    //
+    // let mut txn = graph.start_txn().await.unwrap();
+    //
+    // let query_chunks: Vec<&[Query]> = bus_ingest.queries.chunks(10000).collect();
+    //
+    // for chunk in query_chunks {
+    //     println!("{:?}", chunk.len());
+    //     txn.run_queries(chunk.to_vec()).await.unwrap();
+    //     txn.commit().await.unwrap();
+    //     txn = graph.start_txn().await.unwrap();
+    // }
 }
