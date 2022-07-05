@@ -14,18 +14,18 @@ pub mod station;
 
 use tube::run_tube_ingest;
 use tube_loads_ingest::run_tube_load_ingest;
-use bus::{Bus_Ingest};
-use crate::bus::get_bus_stops;
+use crate::bus::{get_bus_stops, run_bus_ingest};
 use crate::station::{calculate_lat_bounds, calculate_long_bounds, Station};
 use crate::tube::get_tube_stations;
 
-async fn clear_graph(txn: Txn) {
+async fn clear_graph(txn: &Txn) {
     // // uncomment this to delete graph
     txn.run_queries(vec![
         query("MATCH (n) DETACH DELETE n"),
     ])
     .await
     .unwrap();
+
 }
 
 #[tokio::main]
@@ -37,26 +37,33 @@ async fn main() {
     let graph = Arc::new(Graph::new(&uri, user, pass).await.unwrap());
 
     let mut txn = graph.start_txn().await.unwrap();
-    clear_graph(txn);
+    clear_graph(&txn).await;
+    txn.commit().await.unwrap();
 
-    let tube_stations = get_tube_stations();
-    let bus_stops = get_bus_stops();
 
-    let (min_lat, max_lat) = calculate_lat_bounds(&tube_stations, 0.0, 0.0);
+    let mut tube_stations = get_tube_stations();
+    let mut bus_stops = get_bus_stops();
+
+    let (min_lat, max_lat) = calculate_lat_bounds(&tube_stations, None, None);
     let (min_lat, max_lat) = calculate_lat_bounds(&bus_stops, min_lat, max_lat);
 
-    let (min_long, max_long) = calculate_long_bounds(&tube_stations, 0.0, 0.0);
-    let (min_long, max_long) = calculate_lat_bounds(&bus_stops, min_long, max_long);
+    let (min_long, max_long) = calculate_long_bounds(&tube_stations, None, None);
+    let (min_long, max_long) = calculate_long_bounds(&bus_stops, min_long, max_long);
 
-    for mut tube_station in tube_stations.into_iter() {
-        tube_station.normalize_coordinates(min_lat, max_lat, min_long, max_long);
+    for mut tube_station in tube_stations.iter_mut() {
+        tube_station.normalize_coordinates(min_lat.unwrap(), max_lat.unwrap(),
+                                           min_long.unwrap(), max_long.unwrap());
     }
-    for mut bus_stop in bus_stops.into_iter() {
-        bus_stop.normalize_coordinates(min_lat, max_lat, min_long, max_long);
+    for mut bus_stop in bus_stops.iter_mut() {
+        bus_stop.normalize_coordinates(min_lat.unwrap(), max_lat.unwrap(),
+                                       min_long.unwrap(), max_long.unwrap());
     }
 
+    let mut txn = graph.start_txn().await.unwrap();
+    run_tube_ingest(&graph, &txn, tube_stations).await;
+    txn.commit().await.unwrap();
 
-
+    run_bus_ingest(&graph, bus_stops).await;
 
     // let mut stations: Vec<Box<dyn Station>> = Vec::new();
     // stations.append(tube_stations.into_iter().map(|station| Box::new(station)).collect());
