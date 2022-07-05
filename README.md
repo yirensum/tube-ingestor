@@ -8,6 +8,7 @@ Taken from https://www.doogal.co.uk/london_stations.php and https://github.com/n
 
 Crowding data taken from: http://crowding.data.tfl.gov.uk/
 
+London Tube colors: https://londonmymind.com/london-tube-colors/
 ### Bus Data:
 Taken from: https://data.london.gov.uk/dataset/tfl-bus-stop-locations-and-routes
 

@@ -6,23 +6,14 @@ use csv;
 use std::error::Error;
 
 use serde::Deserialize;
+use crate::station::Station;
 
 #[derive(Debug, Deserialize, Clone)]
-struct CsvStop {
+struct CsvBusStop {
     Bus_Stop_Code: i64,
     Stop_Name: String,
     Latitude: f32,
     Longitude: f32,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct Stop {
-    name: String,
-    latitude: f32,
-    longitude: f32,
-    bus_stop_code: i64,
-    x: f32,
-    y: f32,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -34,32 +25,57 @@ struct CsvRoute {
     Bus_Stop_Code: i64,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct BusStop {
+    name: String,
+    latitude: f32,
+    longitude: f32,
+    bus_stop_code: i64,
+    x: f32,
+    y: f32,
+}
+
+impl Station for BusStop {
+    fn get_lat(&self) -> f32 {
+        self.latitude
+    }
+
+    fn get_long(&self) -> f32 {
+        self.longitude
+    }
+
+    fn set_pos(&mut self, x: f32, y: f32) {
+        self.x = x;
+        self.y = y
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct Route {
     route_id: String,
-    stop1: Stop,
-    stop2: Stop,
+    stop1: BusStop,
+    stop2: BusStop,
 }
 
-fn parse_stops() -> Result<HashMap<i64, CsvStop>, Box<dyn Error>> {
-    let mut id_stop_map: HashMap<i64, CsvStop> = HashMap::new();
+fn parse_stops() -> Result<Vec<CsvBusStop>, Box<dyn Error>> {
+    let mut csv_stops = Vec::new();
     let mut rdr = csv::Reader::from_path("./datasets/stops.csv").unwrap();
     for result in rdr.deserialize() {
         // Notice that we need to provide a type hint for automatic
         // deserialization.
-        let stop: Option<CsvStop> = match (result) {
+        let stop: Option<CsvBusStop> = match (result) {
             Ok(obj) => Some(obj),
             Err(err) => None,
         };
         if stop.is_some() {
             let new_stop = stop.unwrap();
-            id_stop_map.insert(new_stop.Bus_Stop_Code, new_stop);
+            csv_stops.push(new_stop);
         }
     }
-    Ok(id_stop_map)
+    Ok(csv_stops)
 }
 
-fn parse_routes(id_stops_map: &HashMap<i64, Stop>)
+fn parse_routes(id_stops_map: &HashMap<i64, BusStop>)
                 -> Result<Vec<Route>, Box<dyn Error>> {
     let mut rdr = csv::Reader::from_path("./datasets/busRoutes.csv").unwrap();
 
@@ -96,7 +112,24 @@ fn parse_routes(id_stops_map: &HashMap<i64, Stop>)
     Ok(routes)
 }
 
-fn normalize_stop_coordinates(id_csv_stops_map: &HashMap<i64, CsvStop>) -> HashMap<i64, Stop> {
+fn convert_to_stops(csv_bus_stops: Vec<CsvBusStop>) -> Vec<BusStop> {
+    let mut bus_stops = Vec::new();
+    for csv_bus_stop in csv_bus_stops.into_iter() {
+        let new_stop = BusStop {
+            name: csv_bus_stop.Stop_Name.clone(),
+            bus_stop_code: csv_bus_stop.Bus_Stop_Code,
+            latitude: csv_bus_stop.Latitude,
+            longitude: csv_bus_stop.Longitude,
+            x: 0.0,
+            y: 0.0
+        };
+        bus_stops.push(new_stop);
+    }
+
+    bus_stops
+}
+
+fn normalize_stop_coordinates(id_csv_stops_map: &HashMap<i64, CsvBusStop>) -> HashMap<i64, BusStop> {
 
     let latitudes: Vec<f32> = id_csv_stops_map
         .values()
@@ -113,22 +146,22 @@ fn normalize_stop_coordinates(id_csv_stops_map: &HashMap<i64, CsvStop>) -> HashM
     let lat_range = max_lat - min_lat;
     let long_range = max_long - min_long;
 
-    let min_x: f32 = -8000.0;
-    let max_x: f32 = 8000.0;
-    let min_y: f32 = -8000.0;
-    let max_y: f32 = 8000.0;
+    let min_x: f32 = -16000.0;
+    let max_x: f32 = 16000.0;
+    let min_y: f32 = -16000.0;
+    let max_y: f32 = 16000.0;
     let width = max_x - min_x;
     let height = max_y - min_y;
 
-    let mut new_id_stops_map: HashMap<i64, Stop> = HashMap::new();
+    let mut new_id_stops_map: HashMap<i64, BusStop> = HashMap::new();
     for (id, csv_stop) in id_csv_stops_map.into_iter() {
-        let new_stop = Stop {
+        let new_stop = BusStop {
             name: csv_stop.Stop_Name.clone(),
             bus_stop_code: csv_stop.Bus_Stop_Code,
             latitude: csv_stop.Latitude,
             longitude: csv_stop.Longitude,
-            x: (csv_stop.Longitude - min_long) / long_range * width + min_x + 703.0 + 273.0,
-            y: -((csv_stop.Latitude - min_lat) / lat_range * height + min_y) + 3621.0 +343.0,
+            x: (csv_stop.Longitude - min_long) / long_range * width + min_x,
+            y: -((csv_stop.Latitude - min_lat) / lat_range * height + min_y),
             // The additions below are to fix the error between bus and tube
         };
         new_id_stops_map.insert(csv_stop.Bus_Stop_Code, new_stop);
@@ -137,7 +170,7 @@ fn normalize_stop_coordinates(id_csv_stops_map: &HashMap<i64, CsvStop>) -> HashM
     new_id_stops_map
 }
 
-fn generate_node_creation_queries(id_stops_map: &HashMap<i64, Stop>) -> Vec<Query> {
+fn generate_node_creation_queries(id_stops_map: &HashMap<i64, BusStop>) -> Vec<Query> {
     let mut queries: Vec<Query> = Vec::new();
     for (id, stop) in id_stops_map.into_iter() {
 
@@ -165,6 +198,12 @@ fn generate_route_queries(routes: &Vec<Route>) -> Vec<Query> {
     queries
 }
 
+pub fn get_bus_stops() -> Vec<BusStop> {
+    let csv_bus_stops = parse_stops().unwrap();
+    let bus_stops = convert_to_stops(csv_bus_stops);
+    bus_stops
+}
+
 pub struct Bus_Ingest {
     pub queries: Vec<Query>,
 }
@@ -176,18 +215,19 @@ impl Bus_Ingest {
         }
     }
 
+
     pub async fn run_bus_ingest(&mut self) {
 
-        let id_csv_stops_map = parse_stops().unwrap();
-        let id_stops_map = normalize_stop_coordinates(&id_csv_stops_map);
-
-        let routes = parse_routes(&id_stops_map).unwrap();
-
-        let node_creation_queries = generate_node_creation_queries(&id_stops_map);
-        let route_creation_queries = generate_route_queries(&routes);
-
-        self.queries = node_creation_queries;
-        self.queries.extend(route_creation_queries);
+        // let id_csv_stops_map = parse_stops().unwrap();
+        // let id_stops_map = normalize_stop_coordinates(&id_csv_stops_map);
+        //
+        // let routes = parse_routes(&id_stops_map).unwrap();
+        //
+        // let node_creation_queries = generate_node_creation_queries(&id_stops_map);
+        // // let route_creation_queries = generate_route_queries(&routes);
+        //
+        // self.queries = node_creation_queries;
+        // self.queries.extend(route_creation_queries);
 
     }
 }

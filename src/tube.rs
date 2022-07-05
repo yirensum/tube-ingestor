@@ -5,6 +5,7 @@ use std::sync::Arc;
 use csv;
 use std::error::Error;
 use serde::{Deserialize, Serialize};
+use crate::station::Station;
 
 // #[derive(Debug, Deserialize, Clone)]
 // struct Line {
@@ -17,23 +18,12 @@ use serde::{Deserialize, Serialize};
 struct Line(String);
 
 #[derive(Clone, Serialize, Deserialize)]
-struct CsvStation {
+struct CsvTubeStation {
     Latitude: f32,
     Longitude: f32,
     Station: String,
     Zone: String,
     Postcode: String,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-struct Station {
-    x: f32,
-    y: f32,
-    name: String,
-    postcode: String,
-    latitude: f32,
-    longitude: f32,
-    zone: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -44,23 +34,49 @@ struct CsvConnection {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct TubeStation {
+    x: f32,
+    y: f32,
+    name: String,
+    postcode: String,
+    latitude: f32,
+    longitude: f32,
+    zone: String,
+}
+
+impl Station for TubeStation {
+    fn get_lat(&self) -> f32 {
+        self.latitude
+    }
+
+    fn get_long(&self) -> f32 {
+        self.longitude
+    }
+
+    fn set_pos(&mut self, x: f32, y: f32) {
+        self.x = x;
+        self.y = y;
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 struct Connection {
-    station1: Station,
-    station2: Station,
+    station1: TubeStation,
+    station2: TubeStation,
     line: Line,
 }
 
-fn parse_stations() -> Result<HashMap<String, CsvStation>, Box<dyn Error>> {
-    let mut stations_map: HashMap<String, CsvStation> = HashMap::new();
+fn parse_stations() -> Result<Vec<CsvTubeStation>, Box<dyn Error>> {
+    let mut csv_stations = Vec::new();
     let mut rdr = csv::Reader::from_path("./datasets/London_stations.csv").unwrap();
     for result in rdr.deserialize() {
         // Notice that we need to provide a type hint for automatic
         // deserialization.
-        let station: CsvStation = result?;
+        let station: CsvTubeStation = result?;
         // println!("{:?}", station.clone());
-        stations_map.insert(station.Station.clone(), station);
+        csv_stations.push(station);
     }
-    Ok(stations_map)
+    Ok(csv_stations)
 }
 
 // fn parse_lines() -> Result<HashMap<i64, Line>, Box<dyn Error>> {
@@ -81,7 +97,7 @@ fn parse_stations() -> Result<HashMap<String, CsvStation>, Box<dyn Error>> {
 //     Ok(id_line_map)
 // }
 
-fn parse_connections(stations_map: &HashMap<String, Station>)
+fn parse_connections(stations_map: &HashMap<String, TubeStation>)
                      -> Result<Vec<Connection>, Box<dyn Error>> {
     let mut connections: Vec<Connection> = Vec::new();
     let mut rdr = csv::Reader::from_path("./datasets/London_tube_lines.csv").unwrap();
@@ -107,7 +123,24 @@ fn parse_connections(stations_map: &HashMap<String, Station>)
     Ok(connections)
 }
 
-fn normalize_station_coordinates(csv_stations_map: &HashMap<String, CsvStation>) -> HashMap<String, Station> {
+fn convert_to_stations(csv_stations: Vec<CsvTubeStation>) -> Vec<TubeStation> {
+    let mut stations = Vec::new();
+    for csv_station in csv_stations.into_iter() {
+        let new_station = TubeStation {
+            name: csv_station.Station.clone(),
+            zone: csv_station.Zone.clone(),
+            latitude: csv_station.Latitude,
+            longitude: csv_station.Longitude,
+            x: 0.0,
+            y: 0.0,
+            postcode: csv_station.Postcode.clone()
+        };
+        stations.push(new_station);
+    }
+    stations
+}
+
+fn normalize_station_coordinates(csv_stations_map: &HashMap<String, CsvTubeStation>) -> HashMap<String, TubeStation> {
 
     let latitudes: Vec<f32> = csv_stations_map
         .values()
@@ -131,9 +164,9 @@ fn normalize_station_coordinates(csv_stations_map: &HashMap<String, CsvStation>)
     let width = max_x - min_x;
     let height = max_y - min_y;
 
-    let mut new_ids_stations_map: HashMap<String, Station> = HashMap::new();
+    let mut new_ids_stations_map: HashMap<String, TubeStation> = HashMap::new();
     for (station, csv_station) in csv_stations_map.into_iter() {
-        let new_station = Station {
+        let new_station = TubeStation {
             name: csv_station.Station.clone(),
             zone: csv_station.Zone.clone(),
             latitude: csv_station.Latitude,
@@ -148,7 +181,7 @@ fn normalize_station_coordinates(csv_stations_map: &HashMap<String, CsvStation>)
     new_ids_stations_map
 }
 
-fn generate_node_creation_queries(id_stations_map: &HashMap<String, Station>) -> Vec<Query> {
+fn generate_node_creation_queries(id_stations_map: &HashMap<String, TubeStation>) -> Vec<Query> {
     let mut queries: Vec<Query> = Vec::new();
     for (name, station) in id_stations_map.into_iter() {
 
@@ -188,20 +221,25 @@ fn generate_connections_queries(csv_connections: &Vec<Connection>) -> Vec<Query>
     queries
 }
 
+pub fn get_tube_stations() -> Vec<TubeStation> {
+    let csv_stations = parse_stations().unwrap();
+    let stations_map = convert_to_stations(csv_stations);
+    stations_map
+}
+
 pub async fn run_tube_ingest(graph: &Arc<Graph>, txn: &Txn) {
 
-    let id_csv_stations_map = parse_stations().unwrap();
-    let stations_map = normalize_station_coordinates(&id_csv_stations_map);
-    // let id_line_map = parse_lines().unwrap();
-    let connections = parse_connections(&stations_map).unwrap();
-
-    let node_creation_queries = generate_node_creation_queries(&stations_map);
-    let connection_creation_queries = generate_connections_queries(&connections);
-
-    txn.run_queries(node_creation_queries)
-        .await
-        .unwrap();
-    txn.run_queries(connection_creation_queries)
-        .await
-        .unwrap();
+    // let stations_map = normalize_station_coordinates(&id_csv_stations_map);
+    // // let id_line_map = parse_lines().unwrap();
+    // let connections = parse_connections(&stations_map).unwrap();
+    //
+    // let node_creation_queries = generate_node_creation_queries(&stations_map);
+    // let connection_creation_queries = generate_connections_queries(&connections);
+    //
+    // txn.run_queries(node_creation_queries)
+    //     .await
+    //     .unwrap();
+    // txn.run_queries(connection_creation_queries)
+    //     .await
+    //     .unwrap();
 }
