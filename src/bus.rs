@@ -6,7 +6,7 @@ use csv;
 use std::error::Error;
 
 use serde::Deserialize;
-use crate::station::Station;
+use crate::coordinate::Coordinate;
 
 #[derive(Debug, Deserialize, Clone)]
 struct CsvBusStop {
@@ -34,7 +34,7 @@ pub struct BusStop {
     y: f32,
 }
 
-impl Station for BusStop {
+impl Coordinate for BusStop {
     fn get_lat(&self) -> f32 {
         self.latitude
     }

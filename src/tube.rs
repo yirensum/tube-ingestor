@@ -5,7 +5,7 @@ use std::sync::Arc;
 use csv;
 use std::error::Error;
 use serde::{Deserialize, Serialize};
-use crate::station::Station;
+use crate::coordinate::Coordinate;
 
 // #[derive(Debug, Deserialize, Clone)]
 // struct Line {
@@ -43,7 +43,7 @@ pub struct TubeStation {
     zone: String,
 }
 
-impl Station for TubeStation {
+impl Coordinate for TubeStation {
     fn get_lat(&self) -> f32 {
         self.latitude
     }

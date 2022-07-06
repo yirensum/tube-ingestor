@@ -1,6 +1,7 @@
 use std::cmp::{max, min};
 
-pub trait Station {
+// traits - has a, inheritance - is a
+pub trait Coordinate {
     fn get_lat(&self) -> f32;
     fn get_long(&self) -> f32;
     fn set_pos(&mut self, x: f32, y: f32);
@@ -21,8 +22,8 @@ pub trait Station {
     }
 }
 
-pub fn calculate_lat_bounds<T: Station>(stations: &Vec<T>, min_lat: Option<f32>, max_lat: Option<f32>)
-    -> (Option<f32>, Option<f32>) {
+pub fn calculate_lat_bounds<T: Coordinate>(stations: &Vec<T>, min_lat: Option<f32>, max_lat: Option<f32>)
+                                           -> (Option<f32>, Option<f32>) {
 
     let latitudes: Vec<f32> = stations.iter()
         .map(|station| station.get_lat()).collect();
@@ -38,8 +39,8 @@ pub fn calculate_lat_bounds<T: Station>(stations: &Vec<T>, min_lat: Option<f32>,
     (Some(new_min_lat), Some(new_max_lat))
 }
 
-pub fn calculate_long_bounds<T: Station>(stations: &Vec<T>, min_long: Option<f32>, max_long: Option<f32>)
-    -> (Option<f32>, Option<f32>) {
+pub fn calculate_long_bounds<T: Coordinate>(stations: &Vec<T>, min_long: Option<f32>, max_long: Option<f32>)
+                                            -> (Option<f32>, Option<f32>) {
 
     let longitudes: Vec<f32> = stations.iter()
         .map(|station| station.get_long()).collect();

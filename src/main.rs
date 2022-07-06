@@ -10,12 +10,12 @@ use serde::Deserialize;
 mod tube;
 mod bus;
 mod tube_loads_ingest;
-pub mod station;
+pub mod coordinate;
 
 use tube::run_tube_ingest;
 use tube_loads_ingest::run_tube_load_ingest;
 use crate::bus::{get_bus_stops, run_bus_ingest};
-use crate::station::{calculate_lat_bounds, calculate_long_bounds, Station};
+use crate::coordinate::{calculate_lat_bounds, calculate_long_bounds, Coordinate};
 use crate::tube::get_tube_stations;
 
 async fn clear_graph(txn: &Txn) {
