@@ -1,5 +1,3 @@
-use std::cmp::{max, min};
-
 // traits - has a, inheritance - is a
 pub trait Coordinate {
     fn get_lat(&self) -> f32;

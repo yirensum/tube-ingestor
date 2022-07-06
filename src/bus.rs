@@ -1,10 +1,8 @@
-use tokio;
-use neo4rs::{query, Graph, Query, Txn};
+use neo4rs::{query, Graph, Query};
 use std::collections::{HashMap};
 use std::sync::Arc;
 use csv;
 use std::error::Error;
-
 use serde::Deserialize;
 use crate::coordinate::Coordinate;
 
@@ -61,9 +59,9 @@ fn parse_stops() -> Result<Vec<CsvBusStop>, Box<dyn Error>> {
     for result in rdr.deserialize() {
         // Notice that we need to provide a type hint for automatic
         // deserialization.
-        let stop: Option<CsvBusStop> = match (result) {
+        let stop: Option<CsvBusStop> = match result {
             Ok(obj) => Some(obj),
-            Err(err) => None,
+            Err(_err) => None,
         };
         if stop.is_some() {
             let new_stop = stop.unwrap();
@@ -83,9 +81,9 @@ fn parse_routes<'a>(id_stops_map: &'a HashMap<i64, &BusStop>)
         // Notice that we need to provide a type hint for automatic
         // deserialization.
 
-        let csv_route: Option<CsvRoute> = match (result) {
+        let csv_route: Option<CsvRoute> = match result {
             Ok(obj) => Some(obj),
-            Err(err) => None,
+            Err(_err) => None,
         };
         if csv_route.is_some() {
             csv_routes.push(csv_route.unwrap());
@@ -95,9 +93,9 @@ fn parse_routes<'a>(id_stops_map: &'a HashMap<i64, &BusStop>)
     let mut routes: Vec<Route> = Vec::new();
 
     for (a, b) in csv_routes.iter().zip(csv_routes.iter().skip(1)) {
-        if (a.Route == b.Route && a.Run == b.Run) {
+        if a.Route == b.Route && a.Run == b.Run {
             // println!("{:?}", a);
-            if (id_stops_map.contains_key(&a.Bus_Stop_Code) && id_stops_map.contains_key(&b.Bus_Stop_Code)) {
+            if id_stops_map.contains_key(&a.Bus_Stop_Code) && id_stops_map.contains_key(&b.Bus_Stop_Code) {
                 let route = Route {
                     stop1: id_stops_map.get(&a.Bus_Stop_Code).unwrap(),
                     stop2: id_stops_map.get(&b.Bus_Stop_Code).unwrap(),

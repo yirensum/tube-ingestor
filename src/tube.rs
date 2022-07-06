@@ -1,4 +1,3 @@
-use tokio;
 use neo4rs::{query, Graph, Query, Txn};
 use std::collections::{HashMap};
 use std::sync::Arc;
@@ -6,13 +5,6 @@ use csv;
 use std::error::Error;
 use serde::{Deserialize, Serialize};
 use crate::coordinate::Coordinate;
-
-// #[derive(Debug, Deserialize, Clone)]
-// struct Line {
-//     line: i64,
-//     name: String,
-//     colour: String,
-// }
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Line(String);
@@ -166,7 +158,7 @@ pub fn get_tube_stations() -> Vec<TubeStation> {
     stations_map
 }
 
-pub async fn run_tube_ingest(graph: &Arc<Graph>, txn: &Txn, tube_stations: Vec<TubeStation>) {
+pub async fn run_tube_ingest(_graph: &Arc<Graph>, txn: &Txn, tube_stations: Vec<TubeStation>) {
 
     let mut stations_map = HashMap::new();
     for station in tube_stations.iter() {

@@ -1,10 +1,7 @@
-use tokio;
 use neo4rs::{query, Graph, Query, Txn};
-use std::collections::{HashMap};
 use std::sync::Arc;
 use csv;
 use std::error::Error;
-
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -56,17 +53,17 @@ fn generate_tube_load_queries(tube_load_vec: Vec<CsvLoadRow>, load_string: Strin
     queries
 }
 
-pub async fn run_tube_load_ingest(graph: &Arc<Graph>, txn: &Txn) {
+pub async fn run_tube_load_ingest(_graph: &Arc<Graph>, txn: &Txn) {
 
     let tube_load_vec_mtt = parse_tube_loads("./datasets/tube_link_loads_mtt.csv".to_string()).unwrap();
     let tube_load_vec_sat = parse_tube_loads("./datasets/tube_link_loads_sat.csv".to_string()).unwrap();
 
-    let mut tube_load_queries = generate_tube_load_queries(tube_load_vec_mtt, "load_monday".to_string());
+    let tube_load_queries = generate_tube_load_queries(tube_load_vec_mtt, "load_monday".to_string());
     txn.run_queries(tube_load_queries)
         .await
         .unwrap();
 
-    let mut tube_load_queries = generate_tube_load_queries(tube_load_vec_sat, "load_saturday".to_string());
+    let tube_load_queries = generate_tube_load_queries(tube_load_vec_sat, "load_saturday".to_string());
     txn.run_queries(tube_load_queries)
         .await
         .unwrap();
