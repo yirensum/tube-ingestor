@@ -1,8 +1,8 @@
-#Tube Ingestor
+# Tube Ingestor
 ### Running this ingests tube and bus station data into Neo4j.
 
 
-##Data Sources
+## Data Sources
 ### Tube Data:
 Taken from https://www.doogal.co.uk/london_stations.php and https://github.com/nicola/tubemaps/tree/master/datasets
 
@@ -12,7 +12,7 @@ London Tube colors: https://londonmymind.com/london-tube-colors/
 ### Bus Data:
 Taken from: https://data.london.gov.uk/dataset/tfl-bus-stop-locations-and-routes
 
-##Installation and Running
+## Installation and Running
 
-####Pre-requisites:
+#### Pre-requisites (wip):
 Install Cargo to run Rust
