@@ -14,5 +14,7 @@ Taken from: https://data.london.gov.uk/dataset/tfl-bus-stop-locations-and-routes
 
 ## Installation and Running
 
-#### Pre-requisites (wip):
-Install Cargo to run Rust
+1) Install Cargo to run Rust (see here: https://www.rust-lang.org/tools/install)
+2) Run `cargo install`
+3) Change username, password in `main.rs` (todo - make this env vars)
+4) Run `cargo run` (make sure desktop db is running)
