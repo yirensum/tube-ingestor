@@ -56,7 +56,7 @@ async fn main() {
     run_tube_ingest(&graph, &txn, tube_stations).await;
     txn.commit().await.unwrap();
 
-    run_bus_ingest(&graph, bus_stops).await;
+    // run_bus_ingest(&graph, bus_stops).await;
 
     // let mut stations: Vec<Box<dyn Station>> = Vec::new();
     // stations.append(tube_stations.into_iter().map(|station| Box::new(station)).collect());

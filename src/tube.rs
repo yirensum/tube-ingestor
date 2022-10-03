@@ -32,7 +32,7 @@ pub struct TubeStation {
     postcode: String,
     latitude: f32,
     longitude: f32,
-    zone: String,
+    zone: i64,
 }
 
 impl Coordinate for TubeStation {
@@ -100,7 +100,7 @@ fn convert_to_stations(csv_stations: Vec<CsvTubeStation>) -> Vec<TubeStation> {
     for csv_station in csv_stations.into_iter() {
         let new_station = TubeStation {
             name: csv_station.Station.clone(),
-            zone: csv_station.Zone.clone(),
+            zone: csv_station.Zone.clone().parse().unwrap(),
             latitude: csv_station.Latitude,
             longitude: csv_station.Longitude,
             x: 0.0,
@@ -121,7 +121,7 @@ fn generate_node_creation_queries(stations: &Vec<TubeStation>) -> Vec<Query> {
             .param("x", station.x.clone().to_string())
             .param("y", station.y.clone().to_string())
             .param("name", station.name.clone())
-            .param("zone", station.zone.clone().to_string())
+            .param("zone", station.zone as i64)
         );
     }
     queries
