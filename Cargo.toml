@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-neo4rs = "0.5.9"
+neo4rs = { path = "../neo4rs-original/lib" }
 tokio = "1.17.0"
 csv = "1.1"
 serde = { version = "1", features = ["derive"] }

@@ -1,4 +1,4 @@
-use neo4rs::{query, Graph, Query, Txn};
+use neo4rs::{query, Graph, Query, Txn, Point2D};
 use std::collections::{HashMap};
 use std::sync::Arc;
 use csv;
@@ -117,11 +117,14 @@ fn generate_node_creation_queries(stations: &Vec<TubeStation>) -> Vec<Query> {
     for station in stations.iter() {
 
         queries.push(query("CREATE (s:Station {x: $x, y: $y, \
-        name: $name, zone: $zone })")
+        name: $name, zone: $zone, latitude: $latitude, longitude: $longitude,\
+         point: point({ longitude: $longitude, latitude: $latitude }) })")
             .param("x", station.x.clone().to_string())
             .param("y", station.y.clone().to_string())
             .param("name", station.name.clone())
             .param("zone", station.zone as i64)
+            .param("latitude", station.latitude as f32)
+            .param("longitude", station.longitude as f32)
         );
     }
     queries
