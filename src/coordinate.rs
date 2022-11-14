@@ -15,7 +15,7 @@ pub trait Coordinate {
         let height = max_y - min_y;
 
         let x = (self.get_long() - min_long) / long_range * width + min_x;
-        let y = -((self.get_lat() - min_lat) / lat_range * height + min_y); //HACK - bloom y-dir reversed?
+        let y = ((self.get_lat() - min_lat) / lat_range * height + min_y); //HACK - bloom y-dir reversed?
         self.set_pos(x, y);
     }
 }
